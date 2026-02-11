@@ -40,10 +40,7 @@ All computations are performed in log-space during prediction.
 
 ---
 
-## Project Structure
 
-
----
 
 ## Usage
 
