@@ -1,202 +1,153 @@
-# 🩺 Diabetes Prediction using Logistic Regression (From Scratch)
+# 🐶🐱 CNN-Based Image Classification (Binary Classification)
+
+A Convolutional Neural Network (CNN) built using **TensorFlow/Keras** for binary image classification.  
+The model is trained on a structured image dataset and evaluates performance using accuracy and loss curves.
+
+---
 
 ## 📌 Project Overview
 
-This project implements **Logistic Regression from scratch** using Gradient Descent on the Diabetes dataset.
+This project implements an end-to-end deep learning pipeline:
 
-The notebook includes:
-
-- Data preprocessing
-- Handling missing values
-- Train-test split
-- Feature scaling
-- Sigmoid function implementation
-- Binary Cross-Entropy loss
-- Gradient Descent optimization
-- Accuracy evaluation
-
-No sklearn LogisticRegression model is used.
+- 📂 Dataset loading using `image_dataset_from_directory`
+- 🎨 Manual grayscale preprocessing using weighted RGB conversion
+- 🧠 CNN model design using Conv2D + MaxPooling layers
+- ⚙️ Model training with Adam optimizer
+- 📊 Performance visualization (Accuracy & Loss curves)
 
 ---
 
-## 🛠️ Libraries Used
+## 🗂 Dataset Structure
 
-```python
-import numpy as np
-import pandas as pd
-from sklearn.model_selection import train_test_split
+The dataset directory should follow this structure:
+
+```
+training_set/
+    class_1/
+    class_2/
+
+test_set/
+    class_1/
+    class_2/
+```
+
+Labels are inferred automatically from folder names.
+
+---
+
+## ⚙️ Dependencies
+
+```bash
+pip install tensorflow matplotlib
 ```
 
 ---
 
-# 📂 Dataset Loading
+## 🧹 Data Preprocessing
 
-```python
-df = pd.read_csv("diabetes.csv")
-df.head()
+### 1️⃣ Image Resizing
+All images are resized to:
+
+```
+(180, 180)
 ```
 
-Target column:
-- `Outcome` (0 = Non-diabetic, 1 = Diabetic)
-
----
-
-# 🧹 Data Preprocessing
-
-## Handle Missing Values
-
-Certain columns contain 0 values which are invalid (e.g., BMI, BloodPressure).
+### 2️⃣ Normalization
+Pixel values are scaled using:
 
 ```python
-cols = ["Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI"]
-
-for col in cols:
-    df[col] = df[col].replace(0, df[col].mean())
+layers.Rescaling(1./255)
 ```
 
----
+### 3️⃣ Manual Grayscale Conversion
 
-# 🎯 Feature Matrix & Target Vector
+Weighted grayscale formula used:
+
+\[
+Gray = 0.299R + 0.587G + 0.114B
+\]
 
 ```python
-X = df.drop("Outcome", axis=1).values
-Y = df["Outcome"].values.reshape(-1,1)
+def rgb_to_grayscale_weighted(x):
+    weights = K.constant([[[[0.299, 0.587, 0.114]]]])
+    return K.sum(x * weights, axis=-1, keepdims=True)
 ```
 
 ---
 
-# 📊 Train-Test Split
+## 🧠 Model Architecture
+
+| Layer | Details |
+|-------|---------|
+| Rescaling | 1./255 normalization |
+| Conv2D | 16 filters, 3x3, ReLU |
+| MaxPooling | 2x2 |
+| Conv2D | 32 filters, 3x3, ReLU |
+| MaxPooling | 2x2 |
+| Conv2D | 64 filters, 3x3, ReLU |
+| MaxPooling | 2x2 |
+| Flatten | - |
+| Dense | 128 units, ReLU |
+| Output | 2 units (logits) |
+
+### Model Compilation
 
 ```python
-X_train, X_test, Y_train, Y_test = train_test_split(
-    X, Y, test_size=0.2, random_state=42
+model.compile(
+    optimizer='adam',
+    loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+    metrics=['accuracy']
 )
 ```
 
 ---
 
-# 📏 Feature Scaling (Standardization)
+## 🚀 Training
 
 ```python
-mean = X_train.mean(axis=0)
-std = X_train.std(axis=0)
+epochs = 5
 
-X_train = (X_train - mean) / std
-X_test = (X_test - mean) / std
-```
-
-Formula:
-
-```
-Z = (X − μ) / σ
+history = model.fit(
+    train_ds,
+    validation_data=val_ds,
+    epochs=epochs
+)
 ```
 
 ---
 
-# 🔢 Logistic Regression from Scratch
+## 📊 Performance Visualization
 
----
+The following metrics are plotted:
 
-## 1️⃣ Sigmoid Function
+- Training Accuracy
+- Validation Accuracy
+- Training Loss
+- Validation Loss
 
 ```python
-def sigmoid(z):
-    return 1 / (1 + np.exp(-z))
-```
-
-Mathematical Formula:
-
-```
-σ(z) = 1 / (1 + e^(-z))
+plt.plot(epochs_range, acc, label='Training Accuracy')
+plt.plot(epochs_range, val_acc, label='Validation Accuracy')
 ```
 
 ---
 
-## 2️⃣ Binary Cross-Entropy Loss
+## 📈 Expected Output
 
-```python
-def compute_loss(y, y_hat):
-    m = len(y)
-    return -(1/m) * np.sum(
-        y * np.log(y_hat) + (1 - y) * np.log(1 - y_hat)
-    )
-```
-
-Formula:
-
-```
-Loss = - (1/m) Σ [ y log(ŷ) + (1-y) log(1-ŷ) ]
-```
+- Increasing training accuracy
+- Stable validation accuracy
+- Decreasing loss curves
+- Insight into overfitting/underfitting behavior
 
 ---
 
-## 3️⃣ Gradient Descent
+## 🧪 Research Notes
 
-```python
-def train(X, Y, lr=0.01, epochs=1000):
-
-    m, n = X.shape
-    w = np.zeros((n,1))
-    b = 0
-
-    for i in range(epochs):
-
-        z = np.dot(X, w) + b
-        y_hat = sigmoid(z)
-
-        dw = (1/m) * np.dot(X.T, (y_hat - Y))
-        db = (1/m) * np.sum(y_hat - Y)
-
-        w -= lr * dw
-        b -= lr * db
-
-    return w, b
-```
+- Uses Sparse Categorical Crossentropy with logits
+- CNN depth increased progressively (16 → 32 → 64 filters)
+- No data augmentation used (can be added for improvement)
+- Grayscale transformation implemented manually for understanding
 
 ---
 
-# 🔮 Prediction Function
-
-```python
-def predict(X, w, b):
-    z = np.dot(X, w) + b
-    y_hat = sigmoid(z)
-    return (y_hat > 0.5).astype(int)
-```
-
-Threshold:
-- If probability > 0.5 → Class 1
-- Else → Class 0
-
----
-
-# 📊 Model Training & Evaluation
-
-```python
-w, b = train(X_train, Y_train)
-
-y_pred = predict(X_test, w, b)
-
-accuracy = np.mean(y_pred == Y_test)
-
-print("Accuracy:", accuracy)
-```
-
-Accuracy Formula:
-
-```
-Accuracy = Correct Predictions / Total Predictions
-```
-
----
-
-# 🧠 Concepts Used
-
-- Logistic Regression
-- Sigmoid Activation
-- Binary Classification
-- Cross-Entropy Loss
-- Gradient Descent
-- Feature Scaling
-- Train-Test Split
 

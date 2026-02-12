@@ -1,251 +1,278 @@
-# 🌳 Decision Tree Classifier (From Scratch)
+# 🚗 PCA From Scratch on Vehicle Dataset
 
 ## 📌 Project Overview
 
-This project implements a **Decision Tree Classifier from scratch** using:
+This project implements **Principal Component Analysis (PCA) from scratch** using only:
 
 - NumPy
 - Pandas
-- Gini Index (for split criterion)
+- Matplotlib
 
-The model is trained and tested on the **Iris dataset**.
+No Scikit-learn PCA was used.
 
----
-
-## 🛠️ Libraries Used
-
-- NumPy
-- Pandas
-
-Install dependencies:
-
-```bash
-pip install numpy pandas
-```
+The goal of this project is to:
+- Preprocess real-world vehicle data
+- Handle missing values
+- Encode categorical features
+- Standardize the dataset
+- Compute covariance matrix manually
+- Compute eigenvalues and eigenvectors using Power Iteration
+- Reduce dimensions to 2 principal components
+- Visualize the transformed data
 
 ---
 
-# 📂 Implementation Details
+## 📂 Dataset
+
+Dataset used: **Car Details Dataset (Version 4)**
+
+The dataset contains:
+- Engine details
+- Power & torque specifications
+- Dimensions
+- Fuel tank capacity
+- Drivetrain type
+- Seating capacity
+- And other vehicle specifications
 
 ---
 
-## 1️⃣ Import Libraries
+## 🧠 Theory Behind PCA
+
+### What is PCA?
+
+Principal Component Analysis (PCA) is a **dimensionality reduction technique** that transforms data into a new coordinate system such that:
+
+- The first principal component captures the maximum variance.
+- Each succeeding component captures the remaining variance.
+- All components are orthogonal (uncorrelated).
+
+---
+
+### Mathematical Steps
+
+1. Standardize the dataset
+
+\[
+Z = \frac{X - \mu}{\sigma}
+\]
+
+2. Compute Covariance Matrix
+
+\[
+C = \frac{X^T X}{n-1}
+\]
+
+3. Solve Eigenvalue Problem
+
+\[
+Cv = \lambda v
+\]
+
+Where:
+- \( \lambda \) = eigenvalue (variance explained)
+- \( v \) = eigenvector (principal direction)
+
+4. Project Data
+
+\[
+X_{PCA} = XW
+\]
+
+Where:
+- \( W \) contains top k eigenvectors
+
+---
+
+## ⚙️ Implementation Steps
+
+### 1️⃣ Import Libraries
 
 ```python
-import numpy as np 
+import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 ```
 
 ---
 
-## 2️⃣ Load Dataset
+### 2️⃣ Load Dataset
 
 ```python
-df = pd.read_csv("/home/mllab/IRIS.csv")
+df = pd.read_csv("car details v4.csv")
 df.info()
 ```
 
-Dataset: Iris  
-Features:
-- sepal_length
-- sepal_width
-- petal_length
-- petal_width
-
-Target:
-- species
-
 ---
 
-## 3️⃣ Feature Matrix and Target Variable
+### 3️⃣ Handle Missing Values
+
+Categorical columns:
 
 ```python
-X = df[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']].values
-Y = df["species"].values
+df["Engine"] = df["Engine"].fillna("1197cc")
+df["Max Power"] = df["Max Power"].fillna("89 bhp @ 4000 rpm")
+df["Max Torque"] = df["Max Torque"].fillna("200 Nm @ 1750 rpm ")
+df["Drivetrain"] = df["Drivetrain"].fillna("FWD")
 ```
 
-- `X` → Feature matrix  
-- `Y` → Target labels  
-
----
-
-## 4️⃣ Train-Test Split (80-20)
+Numerical columns:
 
 ```python
-idx = int(0.8 * len(X))
-
-X_train = X[:idx]
-X_test = X[idx:]
-Y_train = Y[:idx]
-Y_test = Y[idx:]
-```
-
-- 80% training data  
-- 20% testing data  
-
----
-
-# 🌿 Gini Index
-
-## 5️⃣ Gini Function
-
-```python
-def gini(y):
-    count = np.unique(y)
-    g = 1.0
-    for c in count:
-        p = (np.sum(y == c)) / len(y)
-        g = g - p**2
-    return g
-```
-
-### Formula:
-
-Gini = 1 − Σ (pᵢ²)
-
-Where:
-- pᵢ = probability of class i
-
-Lower Gini → Better split
-
----
-
-# 🔎 Finding Best Split
-
-## 6️⃣ Best Split Function
-
-```python
-def best_split(X, Y):
-    best = 1
-    split_threshold = None
-    split_feature = None
-
-    for feature in range(len(X[0])):
-        threshold = np.unique(X[:, feature])
-
-        for t in threshold:
-            left = Y[X[:, feature] <= t]
-            right = Y[X[:, feature] > t]
-
-            g = (len(left)/len(Y)) * gini(left) + \
-                (len(right)/len(Y)) * gini(right)
-
-            if g < best:
-                best = g
-                split_threshold = t
-                split_feature = feature
-
-    return split_feature, split_threshold
-```
-
-This function:
-- Tries all features
-- Tries all possible thresholds
-- Selects the split with minimum Gini impurity
-
----
-
-# 🌳 Decision Tree Structure
-
-## 7️⃣ Node Class
-
-```python
-class Node:
-    def __init__(self, feature=None, threshold=None, left=None, right=None, value=None):
-        self.feature = feature
-        self.threshold = threshold
-        self.left = left
-        self.right = right
-        self.value = value
-```
-
-Each node stores:
-- Feature index
-- Threshold
-- Left subtree
-- Right subtree
-- Class value (if leaf)
-
----
-
-# 🌲 Build Tree Recursively
-
-## 8️⃣ Tree Construction
-
-```python
-def build_tree(X, Y, depth=0, max_dep=5):
-
-    if len(np.unique(Y)) == 1 or depth == max_dep:
-        return Node(value=max(set(Y), key=list(Y).count))
-
-    feature, threshold = best_split(X, Y)
-
-    if feature is None:
-        return Node(value=max(set(Y), key=list(Y).count))
-
-    left = X[:, feature] <= threshold
-    right = X[:, feature] > threshold
-
-    left_child = build_tree(X[left], Y[left], depth+1, max_dep=5)
-    right_child = build_tree(X[right], Y[right], depth+1, max_dep=5)
-
-    return Node(feature, threshold, left_child, right_child)
-```
-
-Stopping conditions:
-- All samples belong to one class
-- Maximum depth reached
-
----
-
-# 🔮 Prediction
-
-## 9️⃣ Predict One Sample
-
-```python
-def predict_one(x, tree):
-    if tree.value is not None:
-        return tree.value
-
-    if x[tree.feature] <= tree.threshold:
-        return predict_one(x, tree.left)
-    else:
-        return predict_one(x, tree.right)
+df["Length"] = df["Length"].fillna(np.mean(df["Length"]))
+df["Width"] = df["Width"].fillna(np.mean(df["Width"]))
+df["Height"] = df["Height"].fillna(np.mean(df["Height"]))
+df["Seating Capacity"] = df["Seating Capacity"].fillna(np.mean(df["Seating Capacity"]))
+df["Fuel Tank Capacity"] = df["Fuel Tank Capacity"].fillna(np.mean(df["Fuel Tank Capacity"]))
 ```
 
 ---
 
-## 🔟 Predict Multiple Samples
+### 4️⃣ Encode Categorical Variables
 
 ```python
-def predict(X, tree):
-    return np.array([predict_one(x, tree) for x in X])
+col = df.columns
+dt = df.dtypes.values
+
+for i in range(len(col)):
+    if dt[i] == 'object':
+        df[col[i]] = df[col[i]].astype('category').cat.codes
 ```
 
 ---
 
-# 📊 Model Training & Evaluation
+### 5️⃣ Standardize Data
 
 ```python
-tree = build_tree(X_train, Y_train, depth=0, max_dep=5)
-
-y_pred = predict(X_test, tree)
-
-acc = np.mean(y_pred == Y_test)
-
-print("Accuracy", acc)
+for i in range(len(col)):
+    if dt[i] != 'object':
+        X = df[col[i]]
+        df[col[i]] = (X - np.mean(X)) / np.std(X)
 ```
-
-Accuracy is calculated as:
-
-Accuracy = Correct Predictions / Total Predictions
 
 ---
 
-# 🎯 Key Concepts Used
+### 6️⃣ Compute Covariance Matrix
 
-- Decision Tree
-- Gini Index
-- Recursive Tree Building
-- Train-Test Split
-- Classification Accuracy
+```python
+X = df
+n = X.shape[0]
+cov_matrix = np.dot(X.T, X) / (n - 1)
+```
+
+---
+
+### 7️⃣ Eigen Decomposition (From Scratch)
+
+#### Power Iteration
+
+```python
+def power_iteration(A, iterations=1000, tol=1e-6):
+    n = A.shape[0]
+    b = np.random.rand(n)
+    b = b / np.linalg.norm(b)
+
+    for _ in range(iterations):
+        b_new = A @ b
+        b_new = b_new / np.linalg.norm(b_new)
+        if np.linalg.norm(b - b_new) < tol:
+            break
+        b = b_new
+
+    eigenvalue = b.T @ A @ b
+    return eigenvalue, b
+```
+
+#### Deflation
+
+```python
+def deflate(A, eigenvalue, eigenvector):
+    return A - eigenvalue * np.outer(eigenvector, eigenvector)
+```
+
+#### Full Decomposition
+
+```python
+def manual_eigen_decomposition(A, k):
+    A_copy = A.copy()
+    eigenvalues = []
+    eigenvectors = []
+
+    for _ in range(k):
+        val, vec = power_iteration(A_copy)
+        eigenvalues.append(val)
+        eigenvectors.append(vec)
+        A_copy = deflate(A_copy, val, vec)
+
+    return np.array(eigenvalues), np.array(eigenvectors).T
+```
+
+---
+
+### 8️⃣ Reduce to 2 Principal Components
+
+```python
+k = 2
+eigenvalues, eigenvectors = manual_eigen_decomposition(cov_matrix, k)
+
+X_pca = X @ eigenvectors
+X_pca = np.array(X_pca)
+```
+
+---
+
+### 9️⃣ Visualization
+
+```python
+plt.figure(figsize=(8,6))
+plt.scatter(X_pca[:,0], X_pca[:,1], alpha=0.6)
+plt.xlabel("Principal Component 1")
+plt.ylabel("Principal Component 2")
+plt.title("PCA from Scratch on Vehicle Dataset")
+plt.show()
+```
+
+---
+
+## 📊 Results
+
+- Data successfully reduced from high-dimensional space to 2D.
+- Principal components capture maximum variance directions.
+- Visualization shows distribution of vehicles in reduced space.
+
+---
+
+## 🎯 Key Learning Outcomes
+
+✔ Implemented PCA without Scikit-learn  
+✔ Understood covariance matrix computation  
+✔ Implemented Power Iteration method  
+✔ Applied eigenvalue deflation  
+✔ Built dimensionality reduction pipeline from scratch  
+
+---
+
+## 🚀 Future Improvements
+
+- Compare with Sklearn PCA
+- Add explained variance ratio
+- Improve categorical encoding
+- Perform clustering after PCA
+- Add scree plot visualization
+
+---
+
+## 📚 Tech Stack
+
+- Python
+- NumPy
+- Pandas
+- Matplotlib
+
+---
+
+## ⭐ Author
+
+**ANSIKA KUNDU**
+
+Machine Learning Enthusiast | AI Student
